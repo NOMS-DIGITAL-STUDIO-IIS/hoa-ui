@@ -4,7 +4,6 @@ const expect = chai.expect;
 const {validateName} = require('../../data/names');
 
 describe('validateName', () => {
-
     it('should return error if names contain special characters', () => {
         const result = validateName('ma$£');
         expect(result).to.eql({title: 'A name mustn\'t contain space, numbers or special characters'});

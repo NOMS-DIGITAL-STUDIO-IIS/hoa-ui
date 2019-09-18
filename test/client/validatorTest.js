@@ -2,18 +2,15 @@ require('jsdom-global/register');
 const chai = require('chai');
 const $ = require('jquery');
 const sinon = require('sinon');
-const sinonChai =  require('sinon-chai');
+const sinonChai = require('sinon-chai');
 const expect = chai.expect;
-const proxyquire  = require('proxyquire');
+const proxyquire = require('proxyquire');
 chai.use(sinonChai);
 
 proxyquire.noCallThru();
-const sandbox = sinon.sandbox.create();
-let searchValidator;
 
-const initialPage = '<html>' +
-    '<div id="resultsBody">' +
-    '</div>' +
+const initialPage = '<html><head></head><body>' +
+    '<div id="resultsBody"></div>' +
     '<form id="idForm" method="post">' +
     '<input name="_csrf" type="hidden" value="4">' +
     '<input id="prisonNumber" type="text" name="prisonNumber">' +
@@ -30,26 +27,27 @@ const initialPage = '<html>' +
     '<input id="age" name="age" type="text">' +
     '<button id="submitNonId">Search</button>' +
     '</form>' +
-    '</html>';
+    '</body></html>';
 
 describe('Client side search form', () => {
 
     let validatorStub;
-    function searchValidator(validator = validatorStub) {
-        return proxyquire('../../assets/javascripts/validation/index', {
-            '../../../controllers/helpers/formValidators': {
-                'validateDescriptionForm': validator
-            }
-        }).init;
-    }
+    let searchValidator;
 
     beforeEach(() => {
         document.body.innerHTML = initialPage;
-        validatorStub = sandbox.stub().returns(null);
+        validatorStub = sinon.stub().returns(null);
+        searchValidator = (validator = validatorStub) => {
+            return proxyquire('../../assets/javascripts/validation/index', {
+                '../../../controllers/helpers/formValidators': {
+                    validateDescriptionForm: validator
+                }
+            }).init;
+        };
     });
 
     afterEach(() => {
-        sandbox.reset();
+        sinon.reset();
     });
 
     it('should display an error if empty form submitted', () => {
@@ -68,7 +66,7 @@ describe('Client side search form', () => {
     });
 
     it('should display an error if one returned from validator', () => {
-        validatorStub = sandbox.stub().returns({title: 'error'});
+        validatorStub = sinon.stub().returns({title: 'error'});
         searchValidator(validatorStub);
         $('#surname').val('W');
         $('#submitNonId').click();

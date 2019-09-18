@@ -9,12 +9,9 @@ const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 const expect = chai.expect;
 chai.use(sinonChai);
-const sandbox = sinon.sandbox.create();
 const content = require('../../data/content');
 const proxyquire = require('proxyquire');
 proxyquire.noCallThru();
-const sinonStubPromise = require('sinon-stub-promise');
-sinonStubPromise(sinon);
 
 describe('searchController', () => {
     let reqMock;
@@ -29,11 +26,11 @@ describe('searchController', () => {
             session: {},
             url: 'http://something.com/search'
         };
-        resMock = {render: sandbox.spy(), redirect: sandbox.spy(), status: sandbox.spy()};
+        resMock = {render: sinon.spy(), redirect: sinon.spy(), status: sinon.spy()};
     });
 
     afterEach(() => {
-        sandbox.reset();
+        sinon.reset();
     });
 
     describe('getIndex', () => {
@@ -73,23 +70,23 @@ describe('searchController', () => {
     });
 
     describe('postSearchForm', () => {
-        let validatorStub;
+        let validatorStub, addressValidator, postSearchFormProxy;
 
         beforeEach(() => {
-            validatorStub = sandbox.stub().returns(null);
+            validatorStub = sinon.stub().returns(null);
+
+            postSearchFormProxy = (descriptionValidator = addressValidator = validatorStub) => {
+                return proxyquire('../../controllers/searchController', {
+                    './helpers/formValidators': {
+                        validateDescriptionForm: descriptionValidator,
+                        validateAddressForm: addressValidator
+                    }
+                }).postSearchForm;
+            };
         });
 
-        const postSearchFormProxy = (descriptionValidator = addressValidator = validatorStub) => {
-            return proxyquire('../../controllers/searchController', {
-                './helpers/formValidators': {
-                    'validateDescriptionForm': descriptionValidator,
-                    'validateAddressForm' : addressValidator
-                }
-            }).postSearchForm;
-        };
-
         it('should redirect to search results if no validation error returned', () => {
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'nameAge',
                     forename: 'Matthew',
@@ -99,16 +96,18 @@ describe('searchController', () => {
                     userInput: {}
                 },
                 url: 'http://something.com/search',
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy()(reqMock, resMock);
+            postSearchFormProxy()(localReqMock, resMock);
             expect(resMock.redirect).to.have.callCount(1);
             expect(resMock.redirect).to.have.been.calledWith('/search/results');
         });
 
         it('should set the userInput on the session ', () => {
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'nameAge',
                     forename: 'Matthew',
@@ -119,18 +118,20 @@ describe('searchController', () => {
                     userInput: {}
                 },
                 url: 'http://something.com/search',
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy()(reqMock, resMock);
-            expect(reqMock.session.userInput).to.eql({
+            postSearchFormProxy()(localReqMock, resMock);
+            expect(localReqMock.session.userInput).to.eql({
                 forename: 'Matthew',
                 surname: 'Whitfield'
             });
         });
 
         it('should ignore items in query string that do not exist', () => {
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'nameAge',
                     forename: 'Matthew',
@@ -141,18 +142,20 @@ describe('searchController', () => {
                     userInput: {}
                 },
                 url: 'http://something.com/search',
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy()(reqMock, resMock);
-            expect(reqMock.session.userInput).to.eql({
+            postSearchFormProxy()(localReqMock, resMock);
+            expect(localReqMock.session.userInput).to.eql({
                 forename: 'Matthew',
                 surname: 'Whitfield'
             });
         });
 
         it('should only use the fields from the selected search type ', () => {
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'other',
                     forename: 'Matthew',
@@ -164,17 +167,19 @@ describe('searchController', () => {
                     userInput: {}
                 },
                 url: 'http://something.com/search',
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy()(reqMock, resMock);
-            expect(reqMock.session.userInput).to.eql({address: 'address input'});
+            postSearchFormProxy()(localReqMock, resMock);
+            expect(localReqMock.session.userInput).to.eql({address: 'address input'});
         });
 
         it('should render search with validation error if any of the inputs do not validate', () => {
-            descriptionValidatorStub = sandbox.stub().returns({error: 'error'});
+            const descriptionValidatorStub = sinon.stub().returns({error: 'error'});
 
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'nameAge',
                     forename: 'Matthew',
@@ -185,10 +190,12 @@ describe('searchController', () => {
                     userInput: {}
                 },
                 url: 'http://something.com/search',
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy(descriptionValidatorStub)(reqMock, resMock);
+            postSearchFormProxy(descriptionValidatorStub)(localReqMock, resMock);
             expect(resMock.render).to.have.callCount(1);
             const view = resMock.render.getCalls()[0].args[0];
             const payload = resMock.render.getCalls()[0].args[1];
@@ -197,7 +204,7 @@ describe('searchController', () => {
         });
 
         it('should reset the visited results', () => {
-            reqMock = {
+            const localReqMock = {
                 body: {
                     searchFormType: 'nameAge',
                     forename: 'Matthew',
@@ -207,24 +214,28 @@ describe('searchController', () => {
                 session: {
                     visited: ['id1']
                 },
-                get: function() {return '';}
+                get: function() {
+                    return '';
+                }
             };
 
-            postSearchFormProxy()(reqMock, resMock);
-            expect(reqMock.session.visited).to.eql([]);
+            postSearchFormProxy()(localReqMock, resMock);
+            expect(localReqMock.session.visited).to.eql([]);
         });
     });
 
     describe('getResults', () => {
-
-        let getRowsStub;
-        let getInmatesStub;
-        let auditStub;
+        let getSearchResultsCountStub;
+        let getZeroSearchResultsCountStub;
+        let getSearchResultsStub;
+        let auditSpy;
+        let getResultsProxy;
 
         beforeEach(() => {
-            getRowsStub = sandbox.stub().returnsPromise().resolves([{totalRows: {value: 20}}]);
-            getInmatesStub = sandbox.stub().returnsPromise().resolves({forename: 'Matt'});
-            auditStub = sandbox.spy();
+            getSearchResultsCountStub = sinon.stub().resolves([{totalRows: {value: 20}}]);
+            getZeroSearchResultsCountStub = sinon.stub().resolves([{totalRows: {value: 0}}]);
+            getSearchResultsStub = sinon.stub().resolves({forename: 'Matt'});
+            auditSpy = sinon.spy();
 
             reqMock = {
                 headers: {
@@ -239,49 +250,46 @@ describe('searchController', () => {
                 query: {page: 1},
                 user: {email: 'x@y.com'},
                 url: 'http://something.com/search/results?page=2&filters=Female',
-                get: (item) => 'http://something.com/search/results?page=2'
+                get: item => 'http://something.com/search/results?page=2'
             };
+
+
+            getResultsProxy = (getSearchResultsCount = getSearchResultsCountStub,
+                getSearchResults = getSearchResultsStub) => {
+                    return proxyquire('../../controllers/searchController',
+                        {
+                            '../data/search': {
+                            getSearchResultsCount: getSearchResultsCount,
+                            getSearchResults: getSearchResults
+                        },
+                        '../data/audit': {
+                            record: auditSpy
+                        }
+                    }).getResults;
+                };
         });
 
-        const getResultsProxy = (getSearchResultsCount = getRowsStub,
-                                 getSearchResults = getInmatesStub) => {
-            return proxyquire('../../controllers/searchController', {
-                '../data/search': {
-                    'getSearchResultsCount': getSearchResultsCount,
-                    'getSearchResults': getSearchResults
-                },
-                '../data/audit': {
-                    'record': auditStub
-                }
-            }).getResults;
-        };
-
-        it('should redirect to search if no referrer', () => {
+        it('should redirect to search if no referrer', async () => {
             reqMock = {headers: {referer: undefined}};
 
-            getResultsProxy()(reqMock, resMock);
+            await getResultsProxy()(reqMock, resMock);
             expect(resMock.redirect).to.have.callCount(1);
             expect(resMock.redirect).to.have.been.calledWith('/search');
         });
 
         context('rowcounts === 0', () => {
-            it('should not call getInmates', () => {
-                getRowsStub = sinon.stub().returnsPromise().resolves([{totalRows: {value: 0}}]);
-                getResultsProxy(getRowsStub)(reqMock, resMock);
-
-                expect(getInmatesStub).to.have.callCount(0);
+            it('should not call getSearchResults', async () => {
+                await getResultsProxy(getZeroSearchResultsCountStub)(reqMock, resMock);
+                expect(getSearchResultsStub).to.have.callCount(0);
             });
 
-            it('should render results page', () => {
-                getRowsStub = sinon.stub().returnsPromise().resolves([{totalRows: {value: 0}}]);
-
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should render results page', async () => {
+                await getResultsProxy(getZeroSearchResultsCountStub)(reqMock, resMock);
                 expect(resMock.render).to.have.callCount(1);
             });
 
-            it('should pass appropriate data to view', () => {
-                getRowsStub = sinon.stub().returnsPromise().resolves([{totalRows: {value: 0}}]);
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should pass appropriate data to view', async () => {
+                await getResultsProxy(getZeroSearchResultsCountStub)(reqMock, resMock);
 
                 const expectedData = [];
                 const expectedCount = 0;
@@ -293,9 +301,9 @@ describe('searchController', () => {
 
             });
 
-            it('should tell the view if id search', () => {
+            it('should tell the view if id search', async () => {
                 reqMock.session.userInput = {prisonNumber: '666'};
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+                await getResultsProxy(getZeroSearchResultsCountStub)(reqMock, resMock);
                 const payload = resMock.render.getCalls()[0].args[1];
                 expect(payload.idSearch).to.eql(true);
             });
@@ -303,41 +311,40 @@ describe('searchController', () => {
         });
 
         context('rowcounts > 0', () => {
-
-            it('should call getInmates', () => {
-                getResultsProxy()(reqMock, resMock);
-                expect(getInmatesStub).to.have.callCount(1);
+            it('should call getSearchResults', async () => {
+                await getResultsProxy()(reqMock, resMock);
+                expect(getSearchResultsStub).to.have.callCount(1);
             });
 
-            it('should audit the search', () => {
-                getResultsProxy()(reqMock, resMock);
-                expect(auditStub).to.have.callCount(1);
+            it('should audit the search', async () => {
+                await getResultsProxy()(reqMock, resMock);
+                expect(auditSpy).to.have.callCount(1);
             });
 
-            it('should pass the appropriate data to audit', () => {
-                getResultsProxy()(reqMock, resMock);
-                expect(auditStub).to.be.calledWith('SEARCH', 'x@y.com', {
+            it('should pass the appropriate data to audit', async () => {
+                await getResultsProxy()(reqMock, resMock);
+                expect(auditSpy).to.be.calledWith('SEARCH', 'x@y.com', {
                     forename: 'Matthew',
                     page: 1,
                     surname: 'Whitfield'
                 });
             });
 
-            it('should redirectToReferer if the page is not valid', () => {
+            it('should redirectToReferer if the page is not valid', async () => {
                 reqMock.query.page = '20';
-                getResultsProxy()(reqMock, resMock);
+                await getResultsProxy()(reqMock, resMock);
 
                 expect(resMock.redirect).to.have.callCount(1);
                 expect(resMock.redirect).to.have.been.calledWith('/search/results?page=2&invalidPage=20');
             });
 
-            it('should render results page', () => {
-                getResultsProxy()(reqMock, resMock);
+            it('should render results page', async () => {
+                await getResultsProxy()(reqMock, resMock);
                 expect(resMock.render).to.have.callCount(1);
             });
 
-            it('should pass appropriate data to view', () => {
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should pass appropriate data to view', async () => {
+                await getResultsProxy()(reqMock, resMock);
 
                 const expectedData = [{forename: 'Matt', shortListed: false, visited: false}];
                 const expectedCount = 20;
@@ -348,8 +355,8 @@ describe('searchController', () => {
                 expect(payload.rowCount).to.be.eql(expectedCount);
             });
 
-            it('should pass suggestions to view', () => {
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should pass suggestions to view', async () => {
+                await getResultsProxy()(reqMock, resMock);
 
                 const expectedSuggestions = {
                     forename: [{type: "useInitial", term: "forename", value: "M"}],
@@ -366,8 +373,8 @@ describe('searchController', () => {
                 expect(payload.suggestions).to.be.eql(expectedSuggestions);
             });
 
-            it('should pass form contents to view', () => {
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should pass form contents to view', async () => {
+                await getResultsProxy()(reqMock, resMock);
 
                 const expectedFormContents = {
                     forename: "Matthew",
@@ -379,8 +386,8 @@ describe('searchController', () => {
                 expect(payload.formContents).to.be.eql(expectedFormContents);
             });
 
-            it('should pass pagination details to view', () => {
-                getResultsProxy(getRowsStub)(reqMock, resMock);
+            it('should pass pagination details to view', async () => {
+                await getResultsProxy()(reqMock, resMock);
 
                 const expectedPagination = {
                     'totalPages': 2,
@@ -394,7 +401,7 @@ describe('searchController', () => {
                 expect(payload.pagination).to.be.eql(expectedPagination);
             });
 
-            it('should handle when no page passed in', () => {
+            it('should handle when no page passed in', async () => {
                 reqMock.url = 'http://something.com/search/results';
 
                 const expectedPagination = {
@@ -410,7 +417,7 @@ describe('searchController', () => {
                     nextPage: "?page=2"
                 };
 
-                getResultsProxy()(reqMock, resMock);
+                await getResultsProxy()(reqMock, resMock);
 
                 const payload = resMock.render.getCalls()[0].args[1];
                 expect(payload.pagination).to.be.eql(expectedPagination);
@@ -418,7 +425,7 @@ describe('searchController', () => {
 
             });
 
-            it('should add visited data', () => {
+            it('should add visited data', async () => {
                 reqMock.session.visited = ['1', '3'];
 
                 const receivedData = [
@@ -427,8 +434,8 @@ describe('searchController', () => {
                     {prisonNumber: '3', forename: 'Zed'},
                 ];
 
-                getInmatesStub = sandbox.stub().returnsPromise().resolves(receivedData);
-                getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                getSearchResultsStub = sinon.stub().resolves(receivedData);
+                await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
 
                 const expectedData = [
                     {forename: 'Matt', prisonNumber: '1', visited: true, shortListed: false},
@@ -440,13 +447,13 @@ describe('searchController', () => {
                 expect(payload.data).to.be.eql(expectedData);
             });
 
-            it('should not add visited data when there are no results', () => {
+            it('should not add visited data when there are no results', async () => {
                 reqMock.session.visited = ['1', '3'];
                 const receivedData = null;
 
-                getInmatesStub = sandbox.stub().returnsPromise().resolves(receivedData);
+                getSearchResultsStub = sinon.stub().resolves(receivedData);
 
-                getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
 
                 const expectedData = [];
 
@@ -454,9 +461,9 @@ describe('searchController', () => {
                 expect(payload.data).to.be.eql(expectedData);
             });
 
-            it('should pass a pageError if one is present', () => {
+            it('should pass a pageError if one is present', async () => {
                 reqMock.query.invalidPage = '20';
-                getResultsProxy()(reqMock, resMock);
+                await getResultsProxy()(reqMock, resMock);
 
                 const expectedPayloadError = {
                     title: 'Invalid selection',
@@ -468,72 +475,72 @@ describe('searchController', () => {
             });
 
             context('Rejected getRows promise', () => {
-                it('should redirect to search page', () => {
-                    getRowsStub = sinon.stub().returnsPromise().rejects({code: 'ETIMEOUT'});
-                    getResultsProxy(getRowsStub)(reqMock, resMock);
+                it('should redirect to search page', async () => {
+                    getSearchResultsCountStub = sinon.stub().rejects({code: 'ETIMEOUT'});
+                    await getResultsProxy()(reqMock, resMock);
 
                     expect(resMock.redirect).to.have.callCount(1);
                     expect(resMock.redirect).to.have.been.calledWith('/search?error=ETIMEOUT');
                 });
             });
 
-            context('Rejected getInmates promise', () => {
-                it('should redirect to search page', () => {
-                    getInmatesStub = sinon.stub().returnsPromise().rejects({code: 'ETIMEOUT'});
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+            context('Rejected getSearchResults promise', () => {
+                it('should redirect to search page', async () => {
+                    getSearchResultsStub = sinon.stub().rejects({code: 'ETIMEOUT'});
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
 
                     expect(resMock.redirect).to.have.callCount(1);
                     expect(resMock.redirect).to.have.been.calledWith('/search?error=ETIMEOUT');
                 });
             });
 
-            it('should not pass the shortList to the view', () => {
-                getResultsProxy()(reqMock, resMock);
+            it('should not pass the shortList to the view', async () => {
+                await getResultsProxy()(reqMock, resMock);
                 const payload = resMock.render.getCalls()[0].args[1];
                 expect(payload.shortList).to.be.eql(null);
             });
 
             context('When shortList is in the query', () => {
 
-                it('should pass the latest name into the view', () => {
+                it('should pass the latest name into the view', async () => {
                     reqMock.query.shortList = 'AB111111';
                     reqMock.query.shortListName = 'Matthew Whitfield';
                     const expectedShortListName = 'Matthew Whitfield';
 
-                    getResultsProxy()(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
                     const payload = resMock.render.getCalls()[0].args[1];
                     expect(payload.shortList.latestName).to.be.eql(expectedShortListName);
                 });
 
-                it('should pass the shortList to the view in an array', () => {
+                it('should pass the shortList to the view in an array', async () => {
                     reqMock.query.shortList = 'AB111111';
                     const expectedShortList = ['AB111111'];
 
-                    getResultsProxy()(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
                     const payload = resMock.render.getCalls()[0].args[1];
                     expect(payload.shortList.prisonNumbers).to.be.eql(expectedShortList);
 
                 });
 
-                it('should pass the shortList to the view in an array if already multiple', () => {
+                it('should pass the shortList to the view in an array if already multiple', async () => {
                     reqMock.query.shortList = ['AB111111', 'AB111112'];
                     const expectedShortList = ['AB111111', 'AB111112'];
 
-                    getResultsProxy()(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
                     const payload = resMock.render.getCalls()[0].args[1];
                     expect(payload.shortList.prisonNumbers).to.be.eql(expectedShortList);
 
                 });
 
-                it('should pass the href of the comparison page', () => {
+                it('should pass the href of the comparison page', async () => {
                     reqMock.query.shortList = ['AB111111', 'AB111112'];
-                    getResultsProxy()(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
 
                     const payload = resMock.render.getCalls()[0].args[1];
                     expect(payload.shortList.href).to.be.eql('/comparison/AB111111,AB111112');
                 });
 
-                it('should attach shortlist information to results', () => {
+                it('should attach shortlist information to results', async () => {
                     reqMock.query.shortList = ['AB111111', 'AB111112'];
 
                     const receivedData = [
@@ -542,8 +549,8 @@ describe('searchController', () => {
                         {prisonNumber: 'AB111113', forename: 'Zed'},
                     ];
 
-                    getInmatesStub = sandbox.stub().returnsPromise().resolves(receivedData);
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    getSearchResultsStub = sinon.stub().resolves(receivedData);
+                    await getResultsProxy()(reqMock, resMock);
 
                     const expectedData = [
                         {forename: 'Matt', prisonNumber: 'AB111111', shortListed: true, visited: false},
@@ -558,7 +565,7 @@ describe('searchController', () => {
 
             context('When filters are in the query', () => {
 
-                it('should make sure no filters in userinput if none in query string', () => {
+                it('should make sure no filters in userinput if none in query string', async () => {
                     reqMock.session.userInput.gender = ['F'];
 
                     const expectedUserInput = {
@@ -567,11 +574,11 @@ describe('searchController', () => {
                         page: 1,
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should add the filters to the user input in an array', () => {
+                it('should add the filters to the user input in an array', async () => {
                     reqMock.query.filters = 'Female';
 
                     const expectedUserInput = {
@@ -581,11 +588,11 @@ describe('searchController', () => {
                         gender: ['F']
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should be able to handle multiple genders', () => {
+                it('should be able to handle multiple genders', async () => {
                     reqMock.query.filters = ['Female', 'Male'];
 
                     const expectedUserInput = {
@@ -595,11 +602,11 @@ describe('searchController', () => {
                         gender: ['F', 'M']
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should be able to handle HDC', () => {
+                it('should be able to handle HDC', async () => {
                     reqMock.query.filters = ['HDC'];
 
                     const expectedUserInput = {
@@ -609,11 +616,11 @@ describe('searchController', () => {
                         hasHDC: [true]
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should be able to handle Lifer', () => {
+                it('should be able to handle Lifer', async () => {
                     reqMock.query.filters = ['Lifer'];
 
                     const expectedUserInput = {
@@ -623,11 +630,11 @@ describe('searchController', () => {
                         isLifer: [true]
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should replace the filters to the user input', () => {
+                it('should replace the filters to the user input', async () => {
                     reqMock.query.filters = 'Male';
                     reqMock.session.userInput.gender = ['F'];
 
@@ -638,11 +645,11 @@ describe('searchController', () => {
                         gender: ['M']
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should remove any gender that is not in query', () => {
+                it('should remove any gender that is not in query', async () => {
                     reqMock.query.filters = 'Female';
                     reqMock.session.userInput.gender = ['F', 'M'];
 
@@ -653,11 +660,11 @@ describe('searchController', () => {
                         gender: ['F']
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should remove any other filter that is not in query', () => {
+                it('should remove any other filter that is not in query', async () => {
                     reqMock.query.filters = 'HDC';
                     reqMock.session.userInput.gender = ['F'];
                     reqMock.session.userInput.hasHDC = [true];
@@ -669,13 +676,13 @@ describe('searchController', () => {
                         hasHDC: [true]
                     };
 
-                    getResultsProxy(getRowsStub, getInmatesStub)(reqMock, resMock);
+                    await getResultsProxy(getSearchResultsCountStub, getSearchResultsStub)(reqMock, resMock);
                     expect(reqMock.session.userInput).to.eql(expectedUserInput);
                 });
 
-                it('should send appropriate data to view', () => {
+                it('should send appropriate data to view', async () => {
                     reqMock.query.filters = ['Female', 'HDC'];
-                    getResultsProxy()(reqMock, resMock);
+                    await getResultsProxy()(reqMock, resMock);
 
                     const expectedFilters = {Female: true, HDC: true};
 

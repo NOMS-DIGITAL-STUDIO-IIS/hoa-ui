@@ -1,12 +1,11 @@
-    const {
-        capitalWithAcronyms,
-        sentenceWithAcronyms
-    } = require('../../../controllers/helpers/textHelpers');
+const {
+    capitalWithAcronyms,
+    sentenceWithAcronyms
+} = require('../../../controllers/helpers/textHelpers');
 const chai = require('chai');
 const expect = chai.expect;
 
 describe('textHelpers', () => {
-
     describe('capitalWithAcronyms', () => {
         it('should return sentence in capital case', () => {
             const input = 'A SENTENCE IS HERE';

@@ -8,97 +8,96 @@ const expect = chai.expect;
 const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 chai.use(sinonChai);
-const sandbox = sinon.sandbox.create();
 const TYPES = require('tedious').TYPES;
 
-describe('Subject data', function() {
+describe('Subject data', () => {
+    let standardResponse;
+    let getCollectionStub;
+    let subjectProxy;
+    let expectedReturnValue;
 
-    const standardResponse = [{
-        JSON1: {
-            value: JSON.stringify({
-                "prisonNumber":"AB111111",
-                "summary":{
-                    "identifier":{
-                        "prisonNumber":"AB111111",
-                        "person":1234567891,
-                        "pnc":"012345\/99A",
-                        "cro":"012345\/99C",
-                        "parole":[{"ref":"AA12311"}]
+    beforeEach(() => {
+        standardResponse = [{
+            JSON1: {
+                value: JSON.stringify({
+                    prisonNumber: 'AB111111',
+                    summary: {
+                        identifier: {
+                            prisonNumber: 'AB111111',
+                            person: 1234567891,
+                            pnc: '012345\/99A',
+                            cro: '012345\/99C',
+                            parole: [{ref: 'AA12311'}]
+                        },
+                        name: {
+                            initial: 'F',
+                            first: 'FIRSTA',
+                            middle: 'MIDDLEA',
+                            last: 'SURNAMEA'
+                        },
+                        sex: 'M'
                     },
-                    "name":{
-                        "initial":"F",
-                        "first":"FIRSTA",
-                        "middle":"MIDDLEA",
-                        "last":"SURNAMEA"
-                    },
-                    "sex":"M",
-                },
-                "hdcRecall":[{
-                    "createdDate":"2001-01-01",
-                    "curfewEndDate":"2001-01-02",
-                    "outcomeDate":"2001-01-02",
-                    "outcome":"Licence revoked: recalled",
-                    "reason":"BREACH CONDITIONS 38A1(a)"
-                }]
-            })
-        }
-    }];
-
-    let getCollectionStub = sandbox.stub().callsArgWith(2, standardResponse);
-
-    const subjectProxy = (getCollection = getCollectionStub) => {
-        return proxyquire('../data/subject', {
-            './dataAccess/iisData': {
-                'getCollection': getCollection,
+                    hdcRecall: [{
+                        createdDate: '2001-01-01',
+                        curfewEndDate: '2001-01-02',
+                        outcomeDate: '2001-01-02',
+                        outcome: 'Licence revoked: recalled',
+                        reason: 'BREACH CONDITIONS 38A1(a)'
+                    }]
+                })
             }
-        });
-    };
+        }];
 
-    const expectedReturnValue = {
-        prisonNumber: "AB111111",
-        summary:{
-            identifier: {
-                prisonNumber: "AB111111",
-                person: 1234567891,
-                pnc: "012345\/99A",
-                cro: "012345\/99C",
-                parole: [{ref:"AA12311"}]
+        getCollectionStub = sinon.stub().callsArgWith(2, standardResponse);
+
+        subjectProxy = (getCollection = getCollectionStub) => {
+            return proxyquire('../data/subject', {
+                './dataAccess/iisData': {
+                    getCollection: getCollection
+                }
+            });
+        };
+
+        expectedReturnValue = {
+            prisonNumber: 'AB111111',
+            summary: {
+                identifier: {
+                    prisonNumber: 'AB111111',
+                    person: 1234567891,
+                    pnc: '012345\/99A',
+                    cro: '012345\/99C',
+                    parole: [{ref: 'AA12311'}]
+                },
+                name: {
+                    initial: 'F',
+                    first: 'FIRSTA',
+                    middle: 'MIDDLEA',
+                    last: 'SURNAMEA'
+                },
+                sex: 'M'
             },
-            name: {
-                initial: "F",
-                first: "FIRSTA",
-                middle: "MIDDLEA",
-                last: "SURNAMEA"
-            },
-            sex: "M",
-        },
-        hdcRecall: [{
-            createdDate: "2001-01-01",
-            curfewEndDate: "2001-01-02",
-            outcomeDate: "2001-01-02",
-            outcome: "Licence revoked: recalled",
-            reason: "BREACH CONDITIONS 38A1(a)"
-        }]
-    };
-
-
+            hdcRecall: [{
+                createdDate: '2001-01-01',
+                curfewEndDate: '2001-01-02',
+                outcomeDate: '2001-01-02',
+                outcome: 'Licence revoked: recalled',
+                reason: 'BREACH CONDITIONS 38A1(a)'
+            }]
+        };
+    });
 
     afterEach(() => {
-        sandbox.reset();
+        sinon.reset();
     });
 
-    it('should return expected info object', () => {
+    it('should return expected info object', async () => {
+        const data = await subjectProxy().getSubject('AB111111', ['summary']);
 
-        const result = subjectProxy().getSubject('AB111111', ['summary']);
-        return result.then(data => {
-            expect(data).to.deep.equal(expectedReturnValue);
-        });
+        expect(data).to.deep.equal(expectedReturnValue);
     });
 
-    it("should return expected object when response is split", () => {
-
+    it('should return expected object when response is split', async () => {
         const splitJson = standardResponse[0].JSON1.value.split(/("M")/);
-
         const splitResponse = [
             {
                 JSON1: {value: splitJson[0], meta: 'something'}
@@ -108,15 +107,11 @@ describe('Subject data', function() {
             }
         ];
 
-        const getCollectionStub = sandbox.stub().callsArgWith(2, splitResponse);
-        const result = subjectProxy(getCollectionStub).getSubject('AB111111', ['summary']);
+        const getCollectionStub = sinon.stub().callsArgWith(2, splitResponse);
+        const data = await subjectProxy(getCollectionStub).getSubject('AB111111', ['summary']);
 
-
-        return result.then(data => {
-            expect(data).to.deep.equal(expectedReturnValue);
-        });
+        expect(data).to.deep.equal(expectedReturnValue);
     });
-
 
     describe('select clause', () => {
         const options = [
@@ -138,7 +133,7 @@ describe('Subject data', function() {
                 const sql = getCollectionStub.getCalls()[0].args[0];
 
                 expect(sql).to.contain('JSON_QUERY(PERSONAL_DETAILS) AS summary');
-                sandbox.reset();
+                sinon.reset();
             });
         });
 
@@ -149,7 +144,7 @@ describe('Subject data', function() {
                 const sql = getCollectionStub.getCalls()[0].args[0];
 
                 expect(sql).to.contain(option.sql);
-                sandbox.reset();
+                sinon.reset();
             });
         });
 
@@ -161,7 +156,7 @@ describe('Subject data', function() {
             expect(sql).to.contain('JSON_QUERY(PERSONAL_DETAILS) AS summary, ' +
                 'JSON_QUERY(OFFENCES) AS offences, ' +
                 'JSON_QUERY(SENTENCING) AS sentencing');
-            sandbox.reset();
+            sinon.reset();
         });
     });
 

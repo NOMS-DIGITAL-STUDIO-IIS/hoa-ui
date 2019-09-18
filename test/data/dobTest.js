@@ -8,8 +8,7 @@ const {
 } = require('../../data/dob');
 
 describe('dob', () => {
-    describe('valdateDob', () => {
-
+    describe('validateDob', () => {
         it('should return error if an invalid date is passed', () => {
             const result = validateDob('29', '02', '2017');
             expect(result).to.eql({title: 'Enter a valid date of birth in the format DD/MM/YYYY'});
@@ -31,8 +30,7 @@ describe('dob', () => {
         });
     });
 
-    describe('valdateAge', () => {
-
+    describe('validateAge', () => {
         let error;
 
         beforeEach(() => {

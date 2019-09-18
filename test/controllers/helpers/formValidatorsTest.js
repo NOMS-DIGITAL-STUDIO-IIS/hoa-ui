@@ -3,35 +3,17 @@ const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 const expect = chai.expect;
 chai.use(sinonChai);
-const sandbox = sinon.sandbox.create();
 const proxyquire = require('proxyquire');
 proxyquire.noCallThru();
 
 describe('formValidators', () => {
-
     describe('validateDescriptionForm', () => {
-
-        let validateDobStub, validateAgeStub, validateNameStub, ui;
-
-        const validateDescriptionForm = (validateDob = validateDobStub,
-                                         validateAge = validateAgeStub,
-                                         validateName = validateNameStub) => {
-            return proxyquire('../../../controllers/helpers/formValidators', {
-                '../../data/dob': {
-                    'validateDob': validateDob,
-                    'validateAge': validateAge
-                },
-                '../../data/names': {
-                    'validateName': validateName
-
-                }
-            }).validateDescriptionForm;
-        };
+        let validateDobStub, validateAgeStub, validateNameStub, ui, validateDescriptionForm;
 
         beforeEach(() => {
-            validateDobStub = sandbox.stub().returns(null);
-            validateAgeStub = sandbox.stub().returns(null);
-            validateNameStub = sandbox.stub().returns(null);
+            validateDobStub = sinon.stub().returns(null);
+            validateAgeStub = sinon.stub().returns(null);
+            validateNameStub = sinon.stub().returns(null);
 
             ui = {
                 dobDay: '12',
@@ -42,6 +24,20 @@ describe('formValidators', () => {
                 forename: 'Whitfield',
                 forename2: 'Whitfield'
             };
+
+            validateDescriptionForm = (validateDob = validateDobStub,
+                validateAge = validateAgeStub,
+                validateName = validateNameStub) => {
+                    return proxyquire('../../../controllers/helpers/formValidators', {
+                        '../../data/dob': {
+                            validateDob: validateDob,
+                            validateAge: validateAge
+                        },
+                        '../../data/names': {
+                            validateName: validateName
+                        }
+                    }).validateDescriptionForm;
+                };
         });
 
         it('should call validator for each input if no errors', () => {
@@ -54,18 +50,18 @@ describe('formValidators', () => {
         });
 
         it('should return first failure', () => {
-            validateNameStub = sandbox.stub().returns({err: 'error'});
+            validateNameStub = sinon.stub().returns({err: 'error'});
 
             const result = validateDescriptionForm()(ui);
 
             expect(validateAgeStub).to.have.callCount(1);
             expect(validateDobStub).to.have.callCount(1);
             expect(validateNameStub).to.have.callCount(1);
-            expect(result).to.eql({err: 'error'})
+            expect(result).to.eql({err: 'error'});
         });
 
         it('should return first failure if age', () => {
-            validateAgeStub = sandbox.stub().returns({err: 'error'});
+            validateAgeStub = sinon.stub().returns({err: 'error'});
 
             const result = validateDescriptionForm()(ui);
 
@@ -76,7 +72,7 @@ describe('formValidators', () => {
         });
 
         it('should return first failure if dob', () => {
-            validateDobStub = sandbox.stub().returns({err: 'error'});
+            validateDobStub = sinon.stub().returns({err: 'error'});
 
             const result = validateDescriptionForm()(ui);
 

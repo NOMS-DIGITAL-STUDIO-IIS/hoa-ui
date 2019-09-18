@@ -1,11 +1,9 @@
 require('jsdom-global/register');
 const chai = require('chai');
 const $ = require('jquery');
-const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 const expect = chai.expect;
 chai.use(sinonChai);
-const content = require('../../data/content');
 
 const initialPage = '<html>' +
     '<div class="listItem"></div>' +

@@ -102,7 +102,7 @@ exports.getResults = function(req, res) {
 
     audit.record('SEARCH', req.user.email, req.session.userInput);
 
-    getSearchResultsCount(req.session.userInput)
+    return getSearchResultsCount(req.session.userInput)
         .then(returnedRows => getSearchResultsAndRender(req, res)(returnedRows[0]))
         .catch(error => {
             logger.error('Error during number of rows search: ' + error.message);

@@ -3,12 +3,8 @@ const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
 const expect = chai.expect;
 chai.use(sinonChai);
-const sandbox = sinon.sandbox.create();
-const content = require('../../data/content');
 const proxyquire = require('proxyquire');
 proxyquire.noCallThru();
-const sinonStubPromise = require('sinon-stub-promise');
-sinonStubPromise(sinon);
 
 describe('adminController', () => {
     let reqMock;
@@ -19,35 +15,38 @@ describe('adminController', () => {
     beforeEach(() => {
         reqMock = {
             user: {
-                email: 'x@y.com',
+                email: 'x@y.com'
             }
         };
-        resMock = {render: sandbox.spy(), redirect: sandbox.spy(), status: sandbox.spy()};
-        getActionsStub = sandbox.stub().returnsPromise().resolves(['actions']);
-        printActionsStub = sandbox.stub();
+        resMock = {render: sinon.spy(), redirect: sinon.spy(), status: sinon.spy()};
+        getActionsStub = sinon.stub().resolves(['actions']);
+        printActionsStub = sinon.stub();
     });
 
     afterEach(() => {
-        sandbox.reset();
+        sinon.reset();
     });
 
     describe('getIndex', () => {
+        let getIndexProxy;
 
-        const getIndexProxy = (getActions = getActionsStub) => {
-            return proxyquire('../../controllers/adminController', {
-                '../data/audit': {
-                    'getLatestActions': getActions
-                }
-            }).getIndex;
-        };
+        beforeEach(() => {
+            getIndexProxy = (getActions = getActionsStub) => {
+                return proxyquire('../../controllers/adminController', {
+                    '../data/audit': {
+                        getLatestActions: getActions
+                    }
+                }).getIndex;
+            };
+        });
 
-        it('should call getLatestActions', () => {
-            getIndexProxy()(reqMock, resMock);
+        it('should call getLatestActions', async () => {
+            await getIndexProxy()(reqMock, resMock);
             expect(getActionsStub).to.have.callCount(1);
         });
 
-        it('should render admin view if successful', () => {
-            getIndexProxy()(reqMock, resMock);
+        it('should render admin view if successful', async () => {
+            await getIndexProxy()(reqMock, resMock);
             expect(resMock.render).to.have.callCount(1);
             expect(resMock.render).to.be.calledWith('admin', {
                 content: {title: 'Admin'},
@@ -55,48 +54,54 @@ describe('adminController', () => {
             });
         });
 
-        it('should render admin view with error if unsuccessful', () => {
-            const getActions = sandbox.stub().returnsPromise().rejects({message: 'oops'});
+        it('should render admin view with error if unsuccessful', async () => {
+            const getActionsRejectStub = sinon.stub().rejects({message: 'oops'});
 
-            getIndexProxy(getActions)(reqMock, resMock);
-
-            expect(resMock.render).to.have.callCount(1);
-            expect(resMock.render).to.be.calledWith('admin', {
-                content: {title: 'Admin'},
-                latestAccess: [],
-                err: {
-                    title: 'An error occurred retrieving audit data',
-                    desc: 'Please reload the page to try again'
-                }
-            });
+            try {
+                await getIndexProxy(getActionsRejectStub)(reqMock, resMock);
+            } catch(e) {
+                expect(resMock.render).to.have.callCount(1);
+                expect(resMock.render).to.be.calledWith('admin', {
+                    content: {title: 'Admin'},
+                    latestAccess: [],
+                    err: {
+                        title: 'An error occurred retrieving audit data',
+                        desc: 'Please reload the page to try again'
+                    }
+                });
+            }
         });
     });
 
     describe('printItems', () => {
-        const printItemsProxy = (getActions = getActionsStub, printActions = printActionsStub) => {
-            return proxyquire('../../controllers/adminController', {
-                '../data/audit': {
-                    'getLatestActions': getActions
-                },
-                './helpers/pdfHelpers': {
-                    'createPdf': printActions,
-                    'twoColumnTable' : '2ColumnStub'
-                }
-            }).printItems;
-        };
+        let printItemsProxy;
 
-        it('should call getLatestActions', () => {
-            printItemsProxy()(reqMock, resMock);
+        beforeEach(() => {
+            printItemsProxy = (getActions = getActionsStub, printActions = printActionsStub) => {
+                return proxyquire('../../controllers/adminController', {
+                    '../data/audit': {
+                        getLatestActions: getActions
+                    },
+                    './helpers/pdfHelpers': {
+                        createPdf: printActions,
+                        twoColumnTable: '2ColumnStub'
+                    }
+                }).printItems;
+            };
+        });
+
+        it('should call getLatestActions', async () => {
+            await printItemsProxy()(reqMock, resMock);
             expect(getActionsStub).to.have.callCount(1);
         });
 
-        it('should print actions if successful', () => {
-            printItemsProxy()(reqMock, resMock);
+        it('should print actions if successful', async () => {
+            await printItemsProxy()(reqMock, resMock);
             expect(printActionsStub).to.have.callCount(1);
         });
 
-        it('should pass appropriate data to printItems', () => {
-            printItemsProxy()(reqMock, resMock);
+        it('should pass appropriate data to printItems', async () => {
+            await printItemsProxy()(reqMock, resMock);
 
             const availablePrintOptions = {
                 latestAccess: {
@@ -108,7 +113,5 @@ describe('adminController', () => {
 
             expect(printActionsStub).to.be.calledWith(resMock, ['latestAccess'], [['actions']], availablePrintOptions);
         });
-
     });
-
 });
